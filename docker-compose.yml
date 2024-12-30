@@ -1,0 +1,70 @@
+services:
+  userdb:
+    image: postgres:latest
+    container_name: userdb
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: userdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+  customerdb:
+    image: postgres:latest
+    container_name: customerdb
+    ports:
+      - 5435:5432
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: customerdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+  userservice:
+    build:
+      context: ./user-management
+    container_name: userservice
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=userdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_HOST=userdb
+      - JWT_SECRET=VeRy-STRONK-S3CrEt
+    ports:
+      - 3000:3000
+    depends_on:
+      userdb:
+        condition: service_healthy
+  customerservice:
+    build:
+      context: ./customer-management
+    container_name: customerservice
+    environment:
+      - DB_PORT=5432
+      - DB_NAME=customerdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_HOST=customerdb
+      - JWT_SECRET=VeRy-STRONK-S3CrEt
+    ports:
+      - 3005:3005
+    depends_on:
+      customerdb:
+        condition: service_healthy
+  gateway:
+    build:
+      context: ./api-gateway
+    container_name: gateway
+    environment:
+      - USERSERVICE_URL=http://userservice:3000
+      - CUSTOMERSERVICE_URL=http://customerservice:3005
+    ports:
+      - 4000:4000
